@@ -1,0 +1,32 @@
+[project]
+name = "solomon"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Faye Ruby Jackson", email = "justalittleepsilon@gmail.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "curver>=0.4.1",
+    "cysignals==1.11.4",
+    "distribute>=0.7.3",
+    "flipper>=0.15.5",
+    "networkx>=3.2.1",
+    "setuptools>=75.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["--import-mode=importlib", ]
+
+[dependency-groups]
+dev = [
+    "pyinstrument>=5.0.0",
+    "pytest>=8.3.4",
+]
