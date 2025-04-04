@@ -1,6 +1,5 @@
 import itertools
 import math
-import functools
 
 class FreeGrp:
     gens_labels = []
@@ -134,7 +133,7 @@ class SurfaceGroup(FreeGrp):
 
             super().__init__(genus_gen_names + puncture_gen_names)
         else:
-            free_grp = FreeGroup(genus_gen_names)
+            free_grp = FreeGrp(genus_gen_names)
             commutators = [[2*i-1,2*i,1-2*i,-2*i] for i in range(1,self.g+1)]
 
             # Note: itertools.chain flattens the list

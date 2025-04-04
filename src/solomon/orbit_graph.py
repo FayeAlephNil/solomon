@@ -2,7 +2,7 @@ import networkx as nx
 from enum import Enum
 from .monodromy_rep import MonodromyRep
 from itertools import repeat
-from multiprocessing import Pool, freeze_support
+from multiprocessing import Pool
 
 class OrbitGraph:
     num_gens = 0
@@ -67,7 +67,7 @@ class OrbitGraph:
 
     def add_all_nodes_edges(self,lst):
         for x in lst:
-            if x != None:
+            if x is not None:
                 (node,e) = x
                 (v,w,k) = e
                 self.digraph.add_node(node)
@@ -80,8 +80,8 @@ class OrbitGraph:
                 lsts = pool.starmap(self.advance_node_for_par, zip(lst,repeat(direction)), chunksize=(int(len(lst)/20)+1))
                 pool.close()
                 pool.join()
-                for l in lsts:
-                    self.add_all_nodes_edges(l)
+                for to_add in lsts:
+                    self.add_all_nodes_edges(to_add)
         for node in lst:
             self.advance_node_dir(node,direction)
 
