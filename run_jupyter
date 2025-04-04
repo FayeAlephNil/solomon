@@ -1,0 +1,1 @@
+uv run --with jupyter jupyter lab --NotebookApp.max_buffer_size=2000000000

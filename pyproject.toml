@@ -10,10 +10,12 @@ requires-python = ">=3.9"
 dependencies = [
     "curver>=0.4.1",
     "cysignals==1.11.4",
-    "distribute>=0.7.3",
     "flipper>=0.15.5",
     "networkx>=3.2.1",
+    "python-flint>=0.6.0",
     "setuptools>=75.6.0",
+    "click>=8.1.8",
+    "gappy-system",
 ]
 
 [build-system]
@@ -25,8 +27,14 @@ testpaths = ["tests"]
 pythonpath = ["."]
 addopts = ["--import-mode=importlib", ]
 
+[tool.uv.sources]
+gappy-system = { git = "https://github.com/dimpase/gappy", rev = "f0829d56cea1779e1cb53976eb4f3827837af511" }
+
 [dependency-groups]
 dev = [
+    "matplotlib>=3.9.4",
+    "pydot>=3.0.4",
     "pyinstrument>=5.0.0",
     "pytest>=8.3.4",
+    "scikit-learn>=1.6.1",
 ]
