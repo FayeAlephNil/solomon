@@ -6,7 +6,7 @@ from .monodromy_rep import MonodromyRep
 from .orbit_graph import OrbitGraph
 from .surface_group import SurfaceGroup
 
-def alternating_genus_1(m):
+def alternating_genus_1(m,proj=False):
     S = curver.load(1,1)
     g1 = S('a_0')
     g2 = S('b_0')

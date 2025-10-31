@@ -1,5 +1,6 @@
 #from .surface_group import SurfaceGroup
 from .surface_group import FreeGrpElement
+from .utils import convert_flint_to_np, convert_np_to_flint,cofactors
 
 from functools import reduce
 from operator import mul
@@ -56,7 +57,7 @@ class MonodromyRep:
         if self.homology_mod_rep != -1:
             return self.underlying_list
         mats = self.homology_matrices()
-        return [flint.nmod_mat(mat.shape[0], mat.shape[1], mat.flatten().tolist()[0],N) for mat in mats]
+        return [convert_np_to_flint(mat,N) for mat in mats]
 
     def to_local_system(self):
         if self.homology_rep:
@@ -77,7 +78,16 @@ class MonodromyRep:
         result = self.underlying_lst[0]**0
 
         for i in tietze_lst:
-            to_multiply = self.underlying_lst[abs(i)-1]**int(math.copysign(1,i))
+            to_multiply_no_inv = self.underlying_lst[abs(i)-1]
+            sgn = int(math.copysign(1,i))
+            if self.homology_mod_rep != -1 and sgn == -1:
+                size = to_multiply_no_inv.nrows()
+                a_mat = to_multiply_no_inv
+                assert size == 2, "Modular Inverse not yet supported for higher order matrices"
+                # Uses that these matrices, coming from homology, should always have determinant 1
+                to_multiply = flint.nmod_mat(size,size,[a_mat[1,1], -a_mat[0,1], -a_mat[1,0], a_mat[0,0]],self.homology_mod_rep)
+            else:
+                to_multiply = to_multiply_no_inv ** sgn
             if self.contravariant:
                 result = to_multiply * result
             else:
