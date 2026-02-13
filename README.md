@@ -4,7 +4,7 @@ This is a python project dedicated to understanding Lefschetz fibrations, partic
 
 ## For readers of my papers
 
-If you have been directed here from my papers, self-contained versions of the code for those papers can be found in the UniversalBraidsComputations subfolder. These programs require sage to run, and can be run by inputting
+If you have been directed here from my papers, self-contained versions of the code for those papers can be found in the PaperComputations subfolder. These programs require sage to run, and can be run by inputting
 ```
 sage [filename]
 ```
