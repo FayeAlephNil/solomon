@@ -4,11 +4,15 @@ This is a python project dedicated to understanding Lefschetz fibrations, partic
 
 ## For readers of my papers
 
-If you have been directed here from my papers, self-contained versions of the code for those papers can be found in the PaperComputations subfolder. These programs require sage to run, and can be run by inputting
+If you have been directed here from my papers, self-contained versions of the code for those papers can be found in the PaperComputations subfolder. Most of these programs require sage to run, and can be run by inputting
 ```
 sage [filename]
 ```
-in the command line. The lib.sage file is an auxiliary file containing all the common code between the computations.
+in the command line. The lib.sage file is an auxiliary file containing all the common code between the computations. There is one file which is run using gap, and can be run via
+```
+gap [filename]
+```
+in the command line. This file contains generators for Br(q_3), Br(q_4), and Br(q_5\[2\]) that are computed using the other files + the solomon package itself (for Br(q_5\[2\\)).
 
 ## Structure in general 
 
