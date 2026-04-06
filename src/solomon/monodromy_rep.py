@@ -160,7 +160,7 @@ class MonodromyRep:
             for i in range(len(self.underlying_lst)):
                 this_one = self.underlying_lst[i]
                 other_one = other.underlying_lst[i]
-                if self.homology_mod_rep:
+                if self.homology_mod_rep != -1:
                     compare_them = this_one == other_one
                 else:
                     compare_them = np.all(np.isclose(self.underlying_lst[i], other.underlying_lst[i],atol = 0.1))
