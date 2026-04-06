@@ -34,18 +34,14 @@ class FreeGrp:
         return FreeGrpElement(tietze_inp, self)
 
 class FreeGrpElement:
-    def __init__(self,tietze_inp,par):
-        this_run = tietze_inp
-        any_removed = True
-        while any_removed:
-            any_removed = False
-            for i in range(0,len(this_run)-1):
-                if this_run[i] == -this_run[i+1]:
-                    this_run.pop(i)
-                    this_run.pop(i)
-                    any_removed = True
-                    break
-        self.tietze = this_run
+    def __init__(self, tietze_inp, par):
+        stack = []
+        for x in tietze_inp:
+            if stack and stack[-1] == -x:
+                stack.pop()
+            else:
+                stack.append(x)
+        self.tietze = stack
         self.parent = par
 
     def Tietze(self):

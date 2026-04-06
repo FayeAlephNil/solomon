@@ -14,18 +14,39 @@ class OrbitGraph:
 
     def __init__(self, _gens, _start, _action = MonodromyRep.action, **args):
         self.gens = _gens
-        self.start = _start
         self.action = _action
         self.ident = _gens[0] ** 0
         self.num_gens = len(_gens)
 
+        # Maps hash → list of canonical node objects. Ensures each unique node
+        # is represented by a single Python object so that NetworkX dict lookups
+        # hit the fast `is`-identity path rather than calling __eq__ every time.
+        self._node_index = {}
+
         self.digraph = nx.MultiDiGraph()
 
+        _start = self._intern(_start)
+        self.start = _start
         self.digraph.add_node(_start)
 
     class DIR(Enum):
         FORWARD = 1
         BACK = 2
+
+    def _intern(self, node):
+        """Return the canonical object for *node*.
+
+        On first encounter the node itself is stored as canonical.  On
+        subsequent encounters with a mathematically-equal node the previously
+        stored object is returned, so NetworkX dict lookups can use the fast
+        `is`-identity path instead of calling __eq__ each time.
+        """
+        h = hash(node)
+        for existing in self._node_index.get(h, ()):
+            if existing is node or existing == node:
+                return existing
+        self._node_index.setdefault(h, []).append(node)
+        return node
 
     def advance_node_gen_pure(self,n,g,direction):
         if direction == self.DIR.FORWARD:
@@ -45,11 +66,21 @@ class OrbitGraph:
             return (node,edge)
 
     def advance_node_gen(self, n, g, direction):
-        (node,edge) = self.advance_node_gen_pure(n,g,direction)
-        if not(self.digraph.has_edge(*edge)):
-            self.digraph.add_node(node)
-            (v,w,k) = edge
-            self.digraph.add_edge(v,w,key=k)
+        g_key = str(g)
+        if direction == self.DIR.FORWARD:
+            # Skip the twist entirely if this generator's forward edge already exists.
+            if any(g_key in edges for edges in self.digraph.succ[n].values()):
+                return
+            m = self._intern(self.action(g, n))
+            self.digraph.add_node(m)
+            self.digraph.add_edge(n, m, key=g_key)
+        else:
+            # Skip the twist entirely if this generator's backward edge already exists.
+            if any(g_key in edges for edges in self.digraph.pred[n].values()):
+                return
+            m = self._intern(self.action(g ** int(-1), n))
+            self.digraph.add_node(m)
+            self.digraph.add_edge(m, n, key=g_key)
 
     def advance_node_dir(self,n,direction,par=False):
         if par:
@@ -68,22 +99,27 @@ class OrbitGraph:
     def add_all_nodes_edges(self,lst):
         for x in lst:
             if x is not None:
-                (node,e) = x
-                (v,w,k) = e
+                (node, e) = x
+                node = self._intern(node)
+                (v, w, k) = e
+                # Replace whichever endpoint is the new node with its canonical form.
+                if w is not v:
+                    e = (v, node, k) if node == w else (node, w, k)
                 self.digraph.add_node(node)
-                self.digraph.add_edge(v,w,key=k)
+                self.digraph.add_edge(*e)
 
-    def advance_lst_dir(self, inp_lst, direction,par=False):
-        lst = list([node for node,i in inp_lst if i != self.num_gens])
+    def advance_lst_dir(self, inp_lst, direction, par=False):
+        lst = [node for node, i in inp_lst if i != self.num_gens]
         if par:
             with Pool() as pool:
-                lsts = pool.starmap(self.advance_node_for_par, zip(lst,repeat(direction)), chunksize=(int(len(lst)/20)+1))
+                lsts = pool.starmap(self.advance_node_for_par, zip(lst, repeat(direction)), chunksize=(int(len(lst)/20)+1))
                 pool.close()
                 pool.join()
                 for to_add in lsts:
                     self.add_all_nodes_edges(to_add)
-        for node in lst:
-            self.advance_node_dir(node,direction)
+        else:
+            for node in lst:
+                self.advance_node_dir(node, direction)
 
     def advance_forward(self):
         lst = self.digraph.out_degree()
@@ -102,14 +138,14 @@ class OrbitGraph:
 
     def advance_until(self, N = -1):
         if N == -1:
-            last_size = len(self.digraph.nodes())
-            this_size = -1
+            last_size = -1
+            this_size = len(self.digraph.nodes())
             while last_size != this_size:
-                self.advance()
                 last_size = this_size
+                self.advance()
                 this_size = len(self.digraph.nodes())
         else:
-            for i in range(0,N):
+            for i in range(0, N):
                 self.advance()
 
     def show(self, node_labels=False, edge_labels=True,colors={}):

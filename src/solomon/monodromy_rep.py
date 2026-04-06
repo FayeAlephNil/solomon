@@ -8,6 +8,39 @@ import math
 import numpy as np
 import flint
 
+# ---------------------------------------------------------------------------
+# Patch curver's Mapping.__eq__ to skip homology_matrix() on non-S_{1,1}
+# surfaces.  Curver's own comment says: "We only really need this for S_{1,1}."
+# On every other surface self_image() equality is a complete invariant, so the
+# homology_matrix() call is pure overhead.
+# ---------------------------------------------------------------------------
+import curver.kernel.encoding as _cke
+
+_s11_cache: dict = {}
+
+def _is_s11(tri) -> bool:
+    tid = id(tri)
+    if tid not in _s11_cache:
+        info = next(iter(tri.surface().values()))
+        _s11_cache[tid] = (info.g == 1 and info.p == 1)
+    return _s11_cache[tid]
+
+def _patched_mapping_eq(self, other):
+    if isinstance(other, _cke.Encoding):
+        if (self.source_triangulation != other.source_triangulation or
+                self.target_triangulation != other.target_triangulation):
+            return False
+        if not (self.self_image() == other.self_image()):
+            return False
+        # Only compute homology_matrix for S_{1,1} where self_image() alone
+        # does not uniquely determine the mapping class.
+        if _is_s11(self.source_triangulation):
+            return np.array_equal(self.homology_matrix(), other.homology_matrix())
+        return True
+    return NotImplemented
+
+_cke.Mapping.__eq__ = _patched_mapping_eq
+
 class MonodromyRep:
     domain = None
     underlying_lst = []
@@ -101,14 +134,23 @@ class MonodromyRep:
         return repr(self.underlying_lst)
 
     def __hash__(self):
-        if self.homology_mod_rep != -1:
-            return hash(tuple([int(i) for mat in self.underlying_lst for i in mat.entries()]))
-        elif self.homology_rep:
-            return hash(tuple([tuple(mat.flatten().tolist()[0]) for mat in self.underlying_lst]))
-        else:
-            return hash(tuple(self.underlying_lst))
+        try:
+            return self._hash_cache
+        except AttributeError:
+            if self.homology_mod_rep != -1:
+                h = hash(tuple(int(i) for mat in self.underlying_lst for i in mat.entries()))
+            elif self.homology_rep:
+                h = hash(tuple(tuple(mat.flatten().tolist()[0]) for mat in self.underlying_lst))
+            else:
+                h = hash(tuple(self.underlying_lst))
+            self._hash_cache = h
+            return h
 
     def __eq__(self, other):
+        if not isinstance(other, MonodromyRep):
+            return NotImplemented
+        if hash(self) != hash(other):
+            return False
         doms = self.domain == other.domain
         contras = self.contravariant == other.contravariant
         if len(self.underlying_lst) != len(other.underlying_lst):

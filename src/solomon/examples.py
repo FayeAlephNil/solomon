@@ -26,14 +26,22 @@ def basic_chain(g,n):
     chain[1::2] = chain_cs
     return (S,chain)
 
+def hyper_ell_chain(g,n):
+    (S,chain) = basic_chain(g,n)
+    chain.append(S(f'a_{g-1}'))
+    chain.insert(0,S('a_0'))
+    return chain
+
+
 def chain_and_reverse(g,n):
     (S, chain) = basic_chain(g,n)
     chain.append(S(f'a_{g-1}'))
     chain.insert(0,S('a_0'))
+    lst = 2*(chain + chain[::-1])[::-1]
 
-    num_disk_punctures = 4*g
+    num_disk_punctures = 2*2*(2*g+1)
     pi1 = SurfaceGroup(0,num_disk_punctures+1)
-    rep = MonodromyRep(pi1, 2*(chain + chain[::-1])[:-1])
+    rep = MonodromyRep(pi1, 2*(chain + chain[::-1])[::-1])
     orb = OrbitGraph(FreeGrp(num_disk_punctures-1).gens, rep, MonodromyRep.action)
     return (S, rep,orb)
 
@@ -48,6 +56,14 @@ def partial_chain(g,n):
     rep = MonodromyRep(pi1, chain * repeat_num)
     orb = OrbitGraph(FreeGrp(num_chain*repeat_num-1).gens, rep, MonodromyRep.action)
     return (S,rep,orb)
+
+def hyper_ell_fibration(g, k):
+    S = curver.load(g, 1)
+    chain = hyper_ell_chain(g, 1)[:k]
+    pi1 = SurfaceGroup(0, k+1)
+    rep = MonodromyRep(pi1, chain)
+    orb = OrbitGraph(FreeGrp(k-1).gens, rep, MonodromyRep.action)
+    return (S, rep, orb)
 
 def full_chain(g,n):
     (S, chain) = basic_chain(g,n)
