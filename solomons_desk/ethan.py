@@ -565,6 +565,60 @@ class Fibration:
         gens = self.sage_stabilizer()
         return B.subgroup(gens if gens else [B.one()])
 
+    def sage_normal_core(self):
+        """
+        Compute the normal core of the stabilizer in the braid group.
+
+        Core_B(H) is the largest normal subgroup of B contained in the
+        stabilizer H — equivalently, the intersection of all conjugates
+        of H in B.  Since H has finite index (= orbit size), GAP's coset
+        enumeration terminates.
+
+        Returns
+        -------
+        libgap.GapElement
+            A GAP FpGroup representing Core_B(H).
+
+        Raises
+        ------
+        ImportError
+            If SageMath is not available in the current environment.
+        RuntimeError
+            If build_orbit() has not been called yet.
+        """
+        from sage.all import libgap
+        self._require_orbit()
+        gap_B = libgap(self.sage_braid_group())
+        gap_H = libgap(self.sage_stabilizer_subgroup())
+        return gap_B.Core(gap_H)
+
+    def sage_core_quotient(self):
+        """
+        Return the finite quotient group B / Core_B(H).
+
+        The quotient of the braid group by the normal core of the
+        stabilizer is the finite group through which the braid action on
+        the orbit factors faithfully.  Its order is divisible by the
+        orbit size.
+
+        Returns
+        -------
+        libgap.GapElement
+            A GAP FpQuotient group representing B / Core_B(H).
+            Call .Order() to get the group order.
+
+        Raises
+        ------
+        ImportError
+            If SageMath is not available in the current environment.
+        RuntimeError
+            If build_orbit() has not been called yet.
+        """
+        from sage.all import libgap
+        gap_B = libgap(self.sage_braid_group())
+        core = self.sage_normal_core()
+        return gap_B.FactorGroup(core)
+
     # ------------------------------------------------------------------
     # Misc
     # ------------------------------------------------------------------

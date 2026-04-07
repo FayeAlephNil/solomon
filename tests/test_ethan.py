@@ -91,6 +91,10 @@ def test_sage_methods_raise_importerror_without_sage():
             f.sage_stabilizer()
         with pytest.raises(ImportError):
             f.sage_stabilizer_subgroup()
+        with pytest.raises(ImportError):
+            f.sage_normal_core()
+        with pytest.raises(ImportError):
+            f.sage_core_quotient()
 
 
 # ── Sage-available tests ──────────────────────────────────────────────────
@@ -141,3 +145,26 @@ def test_sage_stabilizer_subgroup_has_generators():
     f.build_orbit()
     H = f.sage_stabilizer_subgroup()
     assert len(H.gens()) > 0
+
+
+@pytest.mark.skipif(not HAS_SAGE, reason="Sage not available in this environment")
+def test_sage_normal_core_index_divisible_by_orbit():
+    """[B : Core_B(H)] is divisible by the orbit size."""
+    from sage.all import libgap
+    f = _make_fibration()
+    f.build_orbit()
+    gap_B = libgap(f.sage_braid_group())
+    core = f.sage_normal_core()
+    index = int(gap_B.Index(core))
+    assert index % f.orbit_size() == 0
+
+
+@pytest.mark.skipif(not HAS_SAGE, reason="Sage not available in this environment")
+def test_sage_core_quotient_order():
+    """B / Core_B(H) is a non-trivial finite group whose order is divisible by orbit_size."""
+    f = _make_fibration()
+    f.build_orbit()
+    Q = f.sage_core_quotient()
+    order = int(Q.Order())
+    assert order > 1
+    assert order % f.orbit_size() == 0
