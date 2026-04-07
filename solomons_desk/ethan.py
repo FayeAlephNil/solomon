@@ -355,8 +355,63 @@ class Fibration:
         print(f"Orbit graph (DOT) saved to: {filename}")
 
     # ------------------------------------------------------------------
-    # GAP export
+    # GAP export and Sage BraidGroup integration
     # ------------------------------------------------------------------
+
+    def _schreier_generators(self) -> list:
+        """
+        BFS spanning tree + Schreier lemma → stabilizer generators as braid words.
+
+        Builds a BFS spanning tree of the orbit graph to produce coset
+        representatives, then applies the Schreier lemma: for every directed
+        edge u --g--> v, the element t_u * g * t_v^{-1} lies in the
+        point-stabilizer of the orbit base-point.  Identity elements and
+        duplicate Tietze words are filtered before returning.
+
+        Returns
+        -------
+        list[FreeGrpElement]
+            Deduplicated non-identity stabilizer generators.
+
+        Raises
+        ------
+        RuntimeError
+            If build_orbit() has not been called yet.
+        """
+        self._require_orbit()
+
+        G = self._orbit.digraph
+        start = self._orbit.start
+        gen_map = {str(g): g for g in self._braid_gens}
+        identity_word = self._braid_gens[0] ** 0
+
+        # BFS spanning tree → coset representatives
+        coset_rep = {start: identity_word}
+        queue = deque([start])
+        while queue:
+            u = queue.popleft()
+            for v, edge_dict in G[u].items():
+                if v not in coset_rep:
+                    key = next(iter(edge_dict))
+                    coset_rep[v] = coset_rep[u] * gen_map[key]
+                    queue.append(v)
+
+        # Schreier generators: t_u * g * t_v^{-1} for each edge u --g--> v
+        stab_words = []
+        for u, v, key in G.edges(keys=True):
+            if u not in coset_rep or v not in coset_rep:
+                continue
+            g = gen_map[key]
+            word = coset_rep[u] * g * (coset_rep[v] ** -1)
+            if word.Tietze():
+                stab_words.append(word)
+
+        # Deduplicate by Tietze list
+        seen: list = []
+        for w in stab_words:
+            if not any(w.Tietze() == s.Tietze() for s in seen):
+                seen.append(w)
+        return seen
 
     def gap_generators(self) -> str:
         """
@@ -375,42 +430,10 @@ class Fibration:
         """
         self._require_orbit()
 
-        G = self._orbit.digraph
+        seen = self._schreier_generators()
         start = self._orbit.start
-        gen_map = {str(g): g for g in self._braid_gens}
-        identity_word = self._braid_gens[0] ** 0
 
-        # --- Step 1: BFS spanning tree → coset representatives ---
-        # coset_rep[v] is a FreeGrpElement whose braid action sends `start` to v
-        coset_rep = {start: identity_word}
-        queue = deque([start])
-        while queue:
-            u = queue.popleft()
-            for v, edge_dict in G[u].items():
-                if v not in coset_rep:
-                    key = next(iter(edge_dict))
-                    coset_rep[v] = coset_rep[u] * gen_map[key]
-                    queue.append(v)
-
-        # --- Step 2: Schreier generators ---
-        # For each edge u --g--> v, the element t_u * g * t_v^{-1} lies in
-        # the stabilizer of `start`.
-        stab_words = []
-        for u, v, key in G.edges(keys=True):
-            if u not in coset_rep or v not in coset_rep:
-                continue  # shouldn't happen for a complete orbit
-            g = gen_map[key]
-            word = coset_rep[u] * g * (coset_rep[v] ** -1)
-            if word.Tietze():  # skip identity
-                stab_words.append(word)
-
-        # --- Step 3: deduplicate by Tietze list ---
-        seen: list = []
-        for w in stab_words:
-            if not any(w.Tietze() == s.Tietze() for s in seen):
-                seen.append(w)
-
-        # --- Step 4: Tietze → GAP braid word string ---
+        # Tietze → GAP braid word string
         def tietze_to_gap(tietze: list) -> str:
             if not tietze:
                 return "Identity(F)"
@@ -454,6 +477,93 @@ class Fibration:
         with open(filename, 'w') as f:
             f.write(code)
         print(f"GAP stabilizer generators written to: {filename}")
+
+    def sage_braid_group(self):
+        """
+        Return the Sage BraidGroup B_{m+1} for this fibration.
+
+        The group has m+1 strands and m Artin generators σ_1, …, σ_m,
+        matching the 1-indexed Tietze convention used internally (Solomon
+        Tietze index i  ↔  B.gen(i-1)).
+
+        Can be called before build_orbit() — only the number of twists
+        must be known.
+
+        Returns
+        -------
+        sage.groups.braid.BraidGroup_MFW
+
+        Raises
+        ------
+        ImportError
+            If SageMath is not available in the current environment.
+        """
+        if self._rep is None:
+            self._build_rep()
+        from sage.all import BraidGroup
+        return BraidGroup(len(self._braid_gens) + 1)
+
+    def sage_stabilizer(self) -> list:
+        """
+        Return the orbit stabilizer generators as Sage BraidGroup elements.
+
+        Runs the Schreier lemma (via _schreier_generators) and converts
+        each FreeGrpElement Tietze word to the corresponding element of
+        the Sage BraidGroup B_{m+1}.  The conversion uses the identity:
+
+            Solomon Tietze +i  →  B.gen(i-1)
+            Solomon Tietze -i  →  B.gen(i-1) ** -1
+
+        Requires build_orbit() to have been called first.
+
+        Returns
+        -------
+        list[sage.groups.braid.Braid]
+            Generators of the stabilizer subgroup; may be empty if trivial.
+
+        Raises
+        ------
+        ImportError
+            If SageMath is not available in the current environment.
+        RuntimeError
+            If build_orbit() has not been called yet.
+        """
+        self._require_orbit()
+        B = self.sage_braid_group()
+        gs = B.gens()
+
+        def convert(word):
+            result = B.one()
+            for i in word.Tietze():
+                result = result * gs[abs(i) - 1] ** (1 if i > 0 else -1)
+            return result
+
+        return [convert(w) for w in self._schreier_generators()]
+
+    def sage_stabilizer_subgroup(self):
+        """
+        Return the orbit stabilizer as a Sage BraidGroup subgroup.
+
+        Convenience wrapper around sage_stabilizer() that passes the
+        generator list directly to BraidGroup.subgroup().  Returns the
+        trivial subgroup if the stabilizer is trivial.
+
+        Requires build_orbit() to have been called first.
+
+        Returns
+        -------
+        sage.groups.group.Group
+
+        Raises
+        ------
+        ImportError
+            If SageMath is not available in the current environment.
+        RuntimeError
+            If build_orbit() has not been called yet.
+        """
+        B = self.sage_braid_group()
+        gens = self.sage_stabilizer()
+        return B.subgroup(gens if gens else [B.one()])
 
     # ------------------------------------------------------------------
     # Misc
