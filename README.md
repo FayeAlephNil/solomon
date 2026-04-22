@@ -5,10 +5,12 @@ This is a python project dedicated to understanding Lefschetz fibrations, partic
 ## AI Usage
 
 Recently, I have been experimenting with using AI (Claude Code) to optimize and rapidly iterate on the code contained here. Note that the original python project was written entirely without Claude. In particular, the computations for the 3 papers
+
 1. "How large is the braid monodromy of low-genus Lefschetz fibrations"
 2. "Torsion in the braid monodromy of elliptic fibrations"
 3. "Universal braids for elliptic fibrations: from character varieties to Coxeter's factor groups of braid groups"
-aer contained in the PaperComputations folder and have not been touched by AI tools.
+
+are contained in the PaperComputations folder and have not been touched by AI tools.
 
 ## For readers of my papers
 
